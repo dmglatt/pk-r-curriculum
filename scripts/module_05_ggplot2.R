@@ -147,6 +147,86 @@ p_overlay <- ggplot() +
 
 p_overlay
 
+# ── 7. Faceting — one panel per subject ──────────────────────────────────────
+
+p_facet <- ggplot(data = pk,
+                  aes(x = Time, y = conc)) +
+  geom_point(size = 1.5, color = "#185FA5") +
+  geom_line(linewidth = 0.6, color = "#185FA5") +
+  scale_y_log10() +
+  facet_wrap(~ Subject, ncol = 4) +
+  labs(
+    title = "Theophylline PK — individual profiles by subject",
+    x     = "Time after dose (h)",
+    y     = "Concentration (mg/L)"
+  ) +
+  theme_bw() +
+  theme(
+    strip.background = element_blank(),
+    strip.text       = element_text(size = 10, face = "plain"),
+    panel.grid.minor = element_blank(),
+    axis.text        = element_text(size = 8)
+  )
+
+p_facet
+
+# Modifying the facet to linear, and adding a horizontal reference line
+
+p_facet <- ggplot(data = pk,
+                  aes(x = Time, y = conc)) +
+  geom_point(size = 1.5, color = "#185FA5") +
+  geom_line(linewidth = 0.6, color = "#185FA5") +
+  geom_hline(yintercept = 5, linewidth = 0.4, color = "grey", linetype = "dashed") +
+  scale_y_log10() +
+  facet_wrap(~ Subject, ncol = 4) +
+  annotate(
+    geom  = "text",
+    x     = 11,          # x position — adjust to sit near the right edge
+    y     = 7,         # just above the line so they don't overlap
+    label = "5 mg/L",
+    size  = 2.5,
+    color = "grey40",
+    hjust = -1.5            # right-justify the text
+  ) +
+  labs(
+    title = "Theophylline PK — individual profiles by subject",
+    x     = "Time after dose (h)",
+    y     = "Concentration (mg/L)"
+  ) +
+  theme_bw() +
+  theme(
+    strip.background = element_blank(),
+    strip.text       = element_text(size = 10, face = "plain"),
+    panel.grid.minor = element_blank(),
+    axis.text        = element_text(size = 8)
+  )
+
+p_facet
+
+
+# ── 8. Save figures programmatically ─────────────────────────────────────────
+# Always save with ggsave() — never use the Export button in RStudio
+# ggsave() gives you exact control over dimensions and resolution
+
+ggsave(
+  filename = "outputs/figures/m05_theoph_spaghetti.png",
+  plot     = p_linear,
+  width    = 8, height = 5, dpi = 300, units = "in"
+)
+
+ggsave(
+  filename = "outputs/figures/m05_theoph_mean_overlay.png",
+  plot     = p_overlay,
+  width    = 8, height = 5, dpi = 300, units = "in"
+)
+
+ggsave(
+  filename = "outputs/figures/m05_theoph_facet.png",
+  plot     = p_facet,
+  width    = 10, height = 8, dpi = 300, units = "in"
+)
+
+
 # Update the code to reproduce the mean profile using nominal time 
 
 # ── Nominal time mapping ──────────────────────────────────────────────────────
@@ -239,3 +319,4 @@ ggsave(
   plot     = p_overlay_corrected,
   width    = 8, height = 5, dpi = 300, units = "in"
 )
+
