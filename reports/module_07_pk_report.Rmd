@@ -1,0 +1,226 @@
+---
+title: "Theophylline Single-Dose PK Analysis"
+author: "Dylan M. Glatt, PhD"
+date: "2026-05-11"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    code_folding: hide
+    fig_width: 8
+    fig_height: 5
+  
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(kableExtra)
+
+# include=FALSE: this chunk runs but nothing is shown in the output
+knitr::opts_chunk$set(
+  echo = TRUE, # show code by default (overridden per chunk)
+  warning = FALSE, # suppress warnings
+  message = FALSE, # suppress package loading messages
+  dpi = 150
+)
+
+pk <- as_tibble(Theoph) # temporary add
+
+```
+
+## 1. Objective
+
+This report summarizes the pharmacokinetics of theophylline following 
+a single oral dose in 12 healthy adult subjects. Data are from the 
+`Theoph` dataset (Boeckmann et al., 1994).
+
+**Key parameters reported:** C~max~, T~max~, AUC~last~, and terminal half-life (t~½~).
+
+---
+
+## 2. Data summary
+
+```{r data-load}
+pk <- pk |>
+  mutate(
+    nom_time = case_when(
+      Time == 0      ~ 0,
+      Time < 0.4     ~ 0.25,
+      Time < 0.75    ~ 0.5,
+      Time < 1.5     ~ 1,
+      Time < 3       ~ 2,
+      Time < 4.5     ~ 4,
+      Time < 6       ~ 5,
+      Time < 8       ~ 7,
+      Time < 10.5    ~ 9,
+      Time < 18      ~ 12,
+      TRUE           ~ 24
+    )
+  )
+```
+
+The dataset contains **`r nrow(pk)`** observations from 
+**`r n_distinct(pk$Subject)`** subjects. Doses ranged from 
+**`r round(min(pk$Dose * pk$Wt), 1)`** to 
+**`r round(max(pk$Dose * pk$Wt), 1)`** mg.
+
+---
+
+## 3. Subject demographics
+
+```{r demographics-table}
+pk |>
+  group_by(Subject) |>
+  summarize(
+    Weight_kg  = first(Wt),
+    Dose_mgkg  = first(Dose),
+    Total_dose = round(first(Dose) * first(Wt), 1),
+    .groups    = "drop"
+  ) |>
+  rename(
+    "Subject"        = Subject,
+    "Weight (kg)"    = Weight_kg,
+    "Dose (mg/kg)"   = Dose_mgkg,
+    "Total Dose (mg)"= Total_dose
+  ) |>
+  kable(caption = "Table 1. Subject demographics and dose information") |>
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width        = FALSE,
+    font_size         = 13
+  )
+```
+
+---
+
+## 4. Concentration-time profiles
+
+### 4.1 Individual profiles
+
+```{r individual-profiles, fig.cap="Figure 1. Individual theophylline concentration-time profiles (semi-log scale)."}
+ggplot(pk, aes(x = Time, y = conc, group = Subject, color = Subject)) +
+  geom_line(linewidth = 0.6, alpha = 0.8) +
+  geom_point(size = 1.8, alpha = 0.8) +
+  scale_y_log10(
+    breaks = c(0.5, 1, 2, 5, 10),
+    labels = c("0.5", "1", "2", "5", "10")
+  ) +
+  annotation_logticks(sides = "l") +
+  labs(
+    x     = "Time after dose (h)",
+    y     = "Theophylline concentration (mg/L)",
+    color = "Subject"
+  ) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank())
+```
+
+### 4.2 Mean profile
+
+```{r mean-profile, fig.cap="Figure 2. Mean ± SD theophylline concentration-time profile (semi-log scale). Individual data shown in gray; mean profile at nominal time shown in blue."}
+pk_mean <- pk |>
+  group_by(nom_time) |>
+  summarize(
+    mean_conc = mean(conc),
+    sd_conc   = sd(conc),
+    .groups   = "drop"
+  )
+
+ggplot() +
+  geom_line(data = pk,
+            aes(x = Time, y = conc, group = Subject),
+            color = "gray70", linewidth = 0.3, alpha = 0.6) +
+  geom_line(data = pk_mean,
+            aes(x = nom_time, y = mean_conc),
+            color = "#185FA5", linewidth = 1.2) +
+  geom_point(data = pk_mean,
+             aes(x = nom_time, y = mean_conc),
+             color = "#185FA5", size = 2.5) +
+  geom_errorbar(data = pk_mean,
+                aes(x    = nom_time,
+                    ymin = pmax(mean_conc - sd_conc, 0.01),
+                    ymax = mean_conc + sd_conc),
+                color = "#185FA5", width = 0.3) +
+  scale_y_log10(breaks = c(0.5,1,2,5,10),
+                labels = c("0.5","1","2","5","10")) +
+  annotation_logticks(sides = "l") +
+  labs(
+    x       = "Time after dose (h)",
+    y       = "Theophylline concentration (mg/L)",
+    caption = "Blue: mean ± SD at nominal time  |  Gray: individual profiles"
+  ) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank())
+```
+
+---
+
+## 5. Descriptive PK summary
+
+```{r pk-summary-table}
+# Compute simple NCA metrics manually
+# Full PKNCA NCA comes in Module 9 — this is a preview
+pk_params <- pk |>
+  group_by(Subject) |>
+  summarize(
+    Dose_mg  = round(first(Dose) * first(Wt), 1),
+    Cmax     = round(max(conc), 2),
+    Tmax     = Time[which.max(conc)],
+    Clast    = round(conc[which(Time == max(Time))], 3),
+    Tlast    = max(Time),
+    .groups  = "drop"
+  )
+
+pk_params |>
+  kable(
+    caption = "Table 2. Descriptive PK parameters by subject",
+    col.names = c("Subject","Dose (mg)","Cmax (mg/L)",
+                  "Tmax (h)","Clast (mg/L)","Tlast (h)")
+  ) |>
+  kable_styling(
+    bootstrap_options = c("striped","hover","condensed"),
+    full_width        = FALSE,
+    font_size         = 13
+  ) |>
+  column_spec(3, bold = TRUE, color = "#185FA5")
+```
+
+### Summary statistics
+
+```{r summary-stats}
+pk_params |>
+  summarize(
+    `Mean Cmax (mg/L)`  = round(mean(Cmax), 2),
+    `SD Cmax`           = round(sd(Cmax), 2),
+    `CV% Cmax`          = round(sd(Cmax)/mean(Cmax)*100, 1),
+    `Median Tmax (h)`   = median(Tmax),
+    `Range Tmax (h)`    = paste0(min(Tmax), "–", max(Tmax))
+  ) |>
+  kable(caption = "Table 3. Summary of Cmax and Tmax across subjects") |>
+  kable_styling(
+    bootstrap_options = c("striped","condensed"),
+    full_width        = FALSE,
+    font_size         = 13
+  )
+```
+
+---
+
+## 6. Conclusions
+
+- Theophylline reached peak concentrations (C~max~) of 
+  `r round(mean(pk_params$Cmax), 1)` ± 
+  `r round(sd(pk_params$Cmax), 1)` mg/L (mean ± SD) at a median 
+  T~max~ of `r median(pk_params$Tmax)` hours.
+- The semi-log profiles show apparent log-linear decline after T~max~, 
+  consistent with first-order elimination kinetics.
+- Full NCA parameter estimation (AUC, t~½~, CL/F) will be performed 
+  in Module 9 using PKNCA.
+
+---
+
+*Report generated: `r format(Sys.time(), "%Y-%m-%d %H:%M")`*  
+*R version: `r R.version$version.string`*
+
