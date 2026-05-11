@@ -157,3 +157,29 @@ ggsave(
   width    = 10, height = 5, dpi = 300
 )
 
+# Enrollment by treatment
+adpc |>
+  group_by(treatment) |>
+  summarize(
+    n_subjects = n_distinct(subject_id),
+    .groups    = "drop"
+  )
+
+# Last timepoint by subject — are some subjects truncated early?
+adpc |>
+  filter(!blq_flag) |>
+  group_by(treatment, subject_id) |>
+  summarize(
+    last_time = max(act_time),
+    n_obs     = n(),
+    .groups   = "drop"
+  ) |>
+  group_by(treatment) |>
+  summarize(
+    mean_last_time = mean(last_time),
+    min_last_time  = min(last_time),
+    max_last_time  = max(last_time),
+    n_truncated    = sum(last_time < max(last_time)),
+    .groups        = "drop"
+  )
+
