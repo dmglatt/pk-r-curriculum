@@ -18,7 +18,8 @@ output:
 library(tidyverse)
 library(kableExtra)
 
-# include=FALSE: this chunk runs but nothing is shown in the output
+# include=FALSE: this chunk runs but nothing is shown in the output, no code and no output
+# echo=FALSE: this chunk runs and OUTPUT is shown, but the code is hidden 
 knitr::opts_chunk$set(
   echo = TRUE, # show code by default (overridden per chunk)
   warning = FALSE, # suppress warnings
@@ -211,8 +212,8 @@ pk_params |>
 ## 6. Conclusions
 
 - Theophylline reached peak concentrations (C~max~) of 
-  `r round(mean(pk_params$Cmax), 1)` ± 
-  `r round(sd(pk_params$Cmax), 1)` mg/L (mean ± SD) at a median 
+  `r round(mean(pk_params$Cmax), 2)` ± 
+  `r round(sd(pk_params$Cmax), 2)` mg/L (mean ± SD) at a median 
   T~max~ of `r median(pk_params$Tmax)` hours.
 - The semi-log profiles show apparent log-linear decline after T~max~, 
   consistent with first-order elimination kinetics.
